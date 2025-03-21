@@ -19,7 +19,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Special Thanks
 
-Special thanks to Krish , Akshay, Avi and other active contributor in youtube and other platform for coninously sharing knowledge 
+Special thanks to Krish , Akshay, Avi and other active contributor in youtube and other platform for continuously sharing knowledge 
 
 ## Contact
 
