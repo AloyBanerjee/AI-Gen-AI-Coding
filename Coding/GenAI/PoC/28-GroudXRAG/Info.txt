@@ -1,0 +1,4 @@
+Configure GroundX on Premices - https://github.com/AloyBanerjee/groundx-on-prem
+
+
+//name='DocumentSearchTool' description="Tool Name: DocumentSearchTool\nTool Arguments: {'query': {'description': 'Query to search the document.', 'type': 'str'}}\nTool Description: Search the document for the given query." args_schema=<class 'src.agentic_rag.tools.custom_tool.DocumentSearchToolInput'> description_updated=False cache_function=<function BaseTool.<lambda> at 0x000002A77F8F5620> result_as_answer=False file_path='C:\Users\Admin\AppData\Local\Temp\tmp4_kiflbs\dspy.pdf' client=<groundx.ingest.GroundX object at 0x000002A787FA6A10> bucket_id=15874 process_id='7412e042-6710-45b5-b5cd-a2d13d2224cb'

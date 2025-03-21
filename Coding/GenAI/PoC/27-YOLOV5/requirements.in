@@ -1,0 +1,9 @@
+opencv-python
+numpy
+pyyaml
+pandas
+streamlit
+pillow
+ipykernel
+torch
+utils
