@@ -1,7 +1,0 @@
-python-dotenv
-langchain
-langchain-openai
-langgraph
-grandalf
-streamlit
-serpapi

@@ -1,8 +1,0 @@
-langchain
-langchain-community
-langchain_google_genai
-duckduckgo_search
-langgraph
-python-dotenv
-ipykernel
-streamlit
