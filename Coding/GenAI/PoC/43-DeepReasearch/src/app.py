@@ -113,11 +113,15 @@ def main():
     # Initialize session state
     init_session_state()
 
-    # Set up sidebar and get configuration
-    config = setup_sidebar()
+    tab1, tab2 = st.tabs(["⚙️ Configuration", "🧠 Deep Research Agent"])
 
-    # Set up main UI
-    is_query_submitted, query = setup_main_ui()
+    with tab1:
+        # Set up sidebar and get configuration
+        config = setup_sidebar()
+
+    with tab2:
+        # Set up main UI
+        is_query_submitted, query = setup_main_ui()
 
     # Display chat history
     display_chat_history()

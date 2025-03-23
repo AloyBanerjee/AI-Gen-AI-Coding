@@ -21,9 +21,9 @@ def setup_sidebar() -> Dict[str, Any]:
     #     help="Your Firecrawl API key for authentication. You can obtain this from the Firecrawl dashboard.",
     # )
     api_key = os.getenv("FIRECRAWL_API_KEY")
-    st.sidebar.markdown("### Research Parameters")
+    st.title("Configuration Parameters")
 
-    max_depth = st.sidebar.number_input(
+    max_depth = st.number_input(
         "Maximum Depth",
         min_value=1,
         max_value=10,
@@ -31,7 +31,7 @@ def setup_sidebar() -> Dict[str, Any]:
         help="The maximum depth of exploration in the research process. Higher values lead to more thorough but slower research.",
     )
 
-    timeout_limit = st.sidebar.number_input(
+    timeout_limit = st.number_input(
         "Timeout Limit (seconds)",
         min_value=30,
         max_value=600,
@@ -39,7 +39,7 @@ def setup_sidebar() -> Dict[str, Any]:
         help="Maximum time allowed for the research process in seconds. Longer timeouts allow for more comprehensive research.",
     )
 
-    max_urls = st.sidebar.number_input(
+    max_urls = st.number_input(
         "Maximum URLs to Explore",
         min_value=5,
         max_value=100,
@@ -47,7 +47,7 @@ def setup_sidebar() -> Dict[str, Any]:
         help="Maximum number of URLs to explore during research. Higher values may provide more information but take longer.",
     )
 
-    st.sidebar.markdown(
+    st.markdown(
         """
         ### About
         This application leverages Firecrawl's deep research endpoint to conduct intelligent web research on your behalf, 
@@ -71,7 +71,7 @@ def setup_main_ui() -> Tuple[bool, str]:
     Returns:
         Tuple[bool, str]: A tuple containing (is_query_submitted, query_text)
     """
-    col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns([16, 1])
     
     with col1:  
         st.title("Deep Research Agent - Answer to your all question")
@@ -80,14 +80,17 @@ def setup_main_ui() -> Tuple[bool, str]:
 
     st.markdown(
         """
-        Use this chatbot to perform in-depth research using Firecrawl. 
-        Enter your research question below, and the system will search the web, 
-        analyze multiple sources, and provide a comprehensive answer.
+        Explore In-Depth Research with Firecrawl 🔥
+
+        Get detailed insights by leveraging Firecrawl’s powerful web search and analysis. 
+        Enter your research question below, and the system will scan multiple sources, 
+        analyze the data, and provide a well-rounded response.
         
         ✨ **Tips for effective research:**
-        - Be specific with your query
-        - Ask open-ended questions
-        - Include any specific aspects you're interested in
+        - Be specific with your question for precise results.
+        - Use open-ended queries to explore broader insights.
+        - Mention key aspects or focus areas for a targeted analysis.
+        - Start your research now! 🚀
         """
     )
 
