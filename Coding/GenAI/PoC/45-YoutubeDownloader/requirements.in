@@ -1,3 +1,12 @@
 streamlit
 yt-dlp
 hydralit_components 
+langchain-groq
+langchain
+langchain-core
+validators==0.28.1
+youtube_transcript_api
+unstructured
+pytube
+numexpr
+langchain_community
