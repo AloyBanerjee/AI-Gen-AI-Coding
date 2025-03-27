@@ -1,0 +1,6 @@
+streamlit
+python-docx
+diff-match-patch
+pandas 
+#difflib
+ollama
