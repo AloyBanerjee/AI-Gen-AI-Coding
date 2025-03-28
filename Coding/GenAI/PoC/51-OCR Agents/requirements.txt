@@ -1,0 +1,4 @@
+mistralai>=1.6.0
+streamlit
+pathlib
+pillow
