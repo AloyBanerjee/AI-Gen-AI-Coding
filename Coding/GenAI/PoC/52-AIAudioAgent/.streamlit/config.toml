@@ -1,0 +1,9 @@
+[theme]
+base="dark"
+primaryColor="purple"
+secondaryBackgroundColor="black"
+textColor="white"
+#font="sans serif"
+
+[server]
+enableStaticServing = true
