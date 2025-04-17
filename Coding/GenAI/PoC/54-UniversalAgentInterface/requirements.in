@@ -1,0 +1,25 @@
+agno
+anthropic
+duckduckgo-search
+google-genai
+groq
+duckdb
+exa_py
+nest_asyncio
+openai
+qdrant-client
+sqlalchemy
+streamlit
+yfinance
+aiofiles
+lancedb
+tantivy
+pypdf
+python-docx
+beautifulsoup4
+arxiv
+jira
+wikipedia
+youtube_transcript_api
+
+###pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
