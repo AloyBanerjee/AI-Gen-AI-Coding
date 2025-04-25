@@ -5,8 +5,18 @@ import os
 import glob
 from langchain_groq import ChatGroq
 from langchain.prompts import PromptTemplate
+from langchain.llms import Ollama
+from langchain.chains import LLMChain
 from langchain.chains.summarize import load_summarize_chain
 from langchain_community.document_loaders import YoutubeLoader, UnstructuredURLLoader
+from dotenv import load_dotenv
+import whisper
+from transformers import pipeline
+import streamlit.components.v1 as components
+
+load_dotenv()
+
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 
 ### Common Function
 
@@ -15,28 +25,19 @@ def download():
         st.warning("Please enter a YouTube URL.")
         return
     
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(f"{output_dir}/video", exist_ok=True)
     quality_option = f'-f "bestvideo[height<={video_quality[:-1]}]+bestaudio/best"' if video_quality not in ["best", "worst"] else f'-f "{video_quality}"'
-    command = f'yt-dlp {quality_option} -P "{output_dir}" "{video_url}"'
-    output = run_command(command)
+    command = f'yt-dlp {quality_option} -P "{output_dir}/video" "{video_url}"'
+    with st.expander('Processing...', expanded=False):
+        output = run_command(command)
     st.success("Download completed!")
 
     # Get the latest downloaded file
-    downloaded_files = sorted(glob.glob(f"{output_dir}/*"), key=os.path.getctime, reverse=True)
+    downloaded_files = sorted(glob.glob(f"{output_dir}/video/*"), key=os.path.getctime, reverse=True)
     if downloaded_files:
         st.session_state["latest_file"] = downloaded_files[0]
         st.session_state["downloaded_files"] = downloaded_files
         st.video(downloaded_files[0])
-
-def extract_audio_old():
-    if not video_url:
-        st.warning("Please enter a YouTube URL.")
-        return
-    
-    os.makedirs(f"{output_dir}/audio", exist_ok=True)
-    command = f'yt-dlp -x --audio-format mp3 -P f"{output_dir}/audio" "{video_url}"'
-    output = run_command(command)
-    st.success("Audio extracted!")
 
 def extract_audio():
     if not video_url:
@@ -48,9 +49,18 @@ def extract_audio():
 
     # Use -o to specify the filename format
     command = f'yt-dlp -x --audio-format mp3 -o "{audio_output_dir}/%(title)s.%(ext)s" "{video_url}"'
-    output = run_command(command)
+    with st.expander('Processing...', expanded=False):
+        output = run_command(command)
 
     st.success("Audio extracted!")
+
+    # Get the latest downloaded file
+    downloaded_files = sorted(glob.glob(f"{output_dir}/audio/*"), key=os.path.getctime, reverse=True)
+    if downloaded_files:
+        st.session_state["latest_audio_file"] = downloaded_files[0]
+        st.session_state["downloaded_audio_files"] = downloaded_files
+        st.audio(downloaded_files[0])
+
 
 def get_metadata():
     if not video_url:
@@ -98,10 +108,10 @@ def summarize(website_url, llm):
                 st.error("Please enter a valid Url. It can may be a YT video utl or website url")
             ## loading the website or yt video data
             if "youtube.com" in website_url:
-                #loader=YoutubeLoader.from_youtube_url(website_url,add_video_info=True)
-                loader = YoutubeLoader.from_youtube_url(
-                    "https://www.youtube.com/watch?v=QsYGlZkevEg", add_video_info=False
-                )
+                loader=YoutubeLoader.from_youtube_url(website_url,add_video_info=True)
+                # loader = YoutubeLoader.from_youtube_url(
+                #     "https://www.youtube.com/watch?v=QsYGlZkevEg", add_video_info=False
+                # )
             else:
                 loader=UnstructuredURLLoader(urls=[website_url],ssl_verify=False,
                                             headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"})
@@ -122,21 +132,114 @@ def summarize(website_url, llm):
     except Exception as e:
         st.exception(f"Exception:{e}")
 
+def listdowndownloadedvideos(output_dir='downloads/'):
+    downloaded_video_files = sorted(glob.glob(f"{output_dir}/video/*"), key=os.path.getctime, reverse=True)
+    downloaded_audio_files = sorted(glob.glob(f"{output_dir}/audio/*"), key=os.path.getctime, reverse=True)
+    if downloaded_video_files:
+        st.session_state["latest_file"] = downloaded_video_files[0]
+        st.session_state["downloaded_files"] = downloaded_video_files
+    if downloaded_audio_files:
+        st.session_state["latest_audio_file"] = downloaded_audio_files[0]
+        st.session_state["downloaded_audio_files"] = downloaded_audio_files
+
+def transcribe_audio(file_path):
+    model = whisper.load_model("base")  # you can try 'tiny' for faster results
+    result = model.transcribe(file_path)
+    return result['text']
+
+def summarize_text(text):
+    summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+    
+    # Optional: split long text into smaller chunks
+    chunks = [text[i:i+1000] for i in range(0, len(text), 1000)]
+    summaries = [summarizer(chunk)[0]['summary_text'] for chunk in chunks]
+    
+    return "\n".join(summaries)
+
+def summarize_with_ollama(text, trading=True):
+    ollama_llm = Ollama(model="llama3.2:latest")  
+   
+    prompt_template = PromptTemplate(
+        input_variables=["transcript"],
+        template="""
+        Summarize the following transcript into a concise summary with key points:
+
+        Transcript:
+        {transcript}
+
+        Summary:
+        """
+    )
+    stock_summary_prompt = PromptTemplate(
+        input_variables=["transcript"],
+        template="""You are a financial analyst and expert summarizer. Given the following transcript from an audio conversation or presentation, your task is to extract all valuable and actionable insights related to stock trading, investments, and the financial markets.
+
+                Your summary must include the following sections clearly:
+
+                ---
+
+                📌 **1. Stock Mentions and Trading Recommendations**  
+                - List all individual stocks, ETFs, or companies mentioned.  
+                - Note any price targets, buy/sell/hold recommendations, or trading strategies discussed.  
+                - Include any technical indicators or chart patterns referenced (e.g., RSI, MACD, moving averages).  
+                - Mention sentiment (bullish, bearish, neutral) if expressed.
+
+                ---
+
+                📈 **2. Market Trends and Economic Commentary**  
+                - Summarize any macroeconomic trends discussed (e.g., inflation, interest rates, GDP, Fed policy).  
+                - Note commentary about sectors (e.g., tech, healthcare, energy) and their outlooks.  
+                - Include geopolitical or regulatory factors affecting markets.
+
+                ---
+
+                💡 **3. Investment Strategies or Tips**  
+                - Extract any trading strategies, portfolio advice, or financial planning suggestions.  
+                - Note if they mention short-term vs. long-term plays, options trading, or risk management tactics.  
+                - Highlight any “golden nuggets” or expert tips mentioned.
+
+                ---
+
+                🧠 **4. Expert Quotes or Standout Insights**  
+                - Quote any strong or memorable statements that offer unique insight.  
+                - Highlight any conflicting viewpoints or debates discussed.
+
+                ---
+
+                📚 **5. Additional Mentions (optional)**  
+                - Cryptocurrency, commodities, real estate, bonds, or other asset classes if referenced.  
+                - Tools, apps, brokers, or platforms mentioned.
+
+                ---
+
+                Please structure the output clearly using bullet points or numbered lists where appropriate, and ensure clarity and conciseness.
+
+                Here is the transcript:
+                {transcript}
+                """
+                )
+    
+    if trading:
+        selected_prompt_template = prompt_template
+    else:
+        selected_prompt_template = prompt_template
+
+
+    chain = LLMChain(llm=ollama_llm, prompt=selected_prompt_template)
+    summary = chain.run(transcript=text)
+    return summary
+
 
 st.set_page_config(
-        page_title="Video Downloader - Companion for Music Lover", page_icon="H:\Interview Preparation\Coding\GenAI\Tryouts\45-YoutubeDownloader\music.webp", layout="wide"
+        page_title="StreamSage", page_icon=r"H:\Interview Preparation\Coding\GenAI\Tryouts\45-YoutubeDownloader\downloadingicon.png", layout="wide"
     )
 
 # Streamlit UI
-col1, col2 = st.columns([0.5, 10])
-with col1:
-    st.image(r'H:\Interview Preparation\Coding\GenAI\Tryouts\45-YoutubeDownloader\downloadicon.png')    
-with col2:
-    st.title("Video Downloader - Companion for Music Lover", anchor=False)
+st.title("🎬🎵 StreamSage: The AI-Powered Video Companion for Music & Market Lovers", anchor=False)
 
 st.info("Download YouTube videos, playlists, and extract audio with ease! In case you need summary of the video,"
 " you can use the Summarization tab to get the summary of the video content."
-" You can also place any website url to get the summary of the content.")
+)
 
 # Input URL
 video_url = st.text_input("Enter YouTube Video/Playlist/Website URL:")
@@ -151,19 +254,27 @@ output_dir = st.text_input("Enter Download Location (Default: downloads/):", "do
 video_quality = st.selectbox("Select Video Quality:", ["best", "worst", "1080p", "720p", "480p", "360p"])  
 
 # Buttons for operations
-col0, col1, col2, col3, col4, col5, col6 = st.tabs([
+col0, col1, col2, col3, col4, col5, col6, col7 = st.tabs([
     "⚙️ Configuration",
     "📥 Download", 
     "🎵 Extract Audio",
     "📄 Get Metadata",
     "📌 List Available Formats", 
     "▶️ Play Videos",
-    "📝 Summarization"
+    "📝 Summarization", 
+    "🧠 Stock Insights"
 ])
 
 with col0:
     groq_api_key = st.text_input("Enter your Groq API Key:", type="password")
-    if groq_api_key:
+    default_config = st.button('Default Config')
+    if default_config:
+        if GROQ_API_KEY.strip():
+            llm = ChatGroq(groq_api_key=GROQ_API_KEY, model_name="llama3-70b-8192")
+            st.success("Groq API Key & large langugae model is successfully set!")
+        else:
+            st.error("Please provide the api key to get started")
+    if groq_api_key and not default_config:
         if groq_api_key.strip():
             llm = ChatGroq(groq_api_key=groq_api_key, model_name="llama3-70b-8192")
             st.success("Groq API Key & large langugae model is successfully set!")
@@ -183,13 +294,50 @@ with col4:
         list_formats()
 with col5:
     # Show all downloaded files if available
+    listdowndownloadedvideos()
     if "downloaded_files" in st.session_state:
         st.subheader("▶️ Play Downloaded Videos")
         selected_video = st.selectbox("🎬 Select a video to play:", st.session_state["downloaded_files"])
         if selected_video:
             st.video(selected_video, )
 with col6:
-    st.title("🦜 Summarize Text From YT or Website")
-    if st.button("📝 Summerize Content", type='primary'):
-        #summarize(video_url, llm)
-        st.warning('This feature is under development. Please check back later.')
+    listdowndownloadedvideos()
+    if "downloaded_files" in st.session_state:
+        st.subheader("🦜 Summarize the Youtube Video")
+        selected_video = st.selectbox("📝 Select a video to summarize:", st.session_state["downloaded_files"])
+        
+        if selected_video:
+            st.info(selected_video)
+            # if st.button("📝 Summerize Content", type='primary'):
+
+            #     audio_path = r"H:\Interview Preparation\Coding\GenAI\Tryouts\45-YoutubeDownloader\downloads\audio\Build AI Assistant With MCP Servers And  Tools Using LangChain And Groq.mp3"
+
+            #     # Loader 1: Transcribe audio
+            #     with st.spinner("🔊 Transcribing audio..."):
+            #         transcript = transcribe_audio(audio_path)
+            #     with st.expander('Transcript', expanded=False):
+            #         st.write(transcript)
+
+            #     # Loader 2: Generate intermediate summary
+            #     with st.spinner("🧠 Generating intermediate summary..."):
+            #         summary = summarize_text(transcript)
+            #     with st.expander('Intermediate Summary', expanded=False):
+            #         st.write(summary)
+
+            #     # Loader 3: Final summaries (detailed)
+            #     with st.spinner("📊 Generating final summaries..."):
+            #         final_trading_summary = summarize_with_ollama(transcript, trading=True)
+            #         final_generic_summary = summarize_with_ollama(transcript, trading=False)
+
+            #     # Display results
+            #     if final_generic_summary and final_trading_summary:
+            #         st.subheader("📝 Final Summary")
+            #         tab1, tab2 = st.tabs(["📝 Generic Summary", "📈 Stock Trading Advice: Summary"])
+            #         with tab1:
+            #             st.success(final_generic_summary)
+            #         with tab2:
+            #             st.info(final_trading_summary)
+
+with col7:    
+    st.title("🌐 Get Stock Anlysis")
+    components.iframe("https://jyotibansalanalysis.com/", height=600, scrolling=True)
